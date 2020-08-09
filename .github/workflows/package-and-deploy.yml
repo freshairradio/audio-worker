@@ -1,0 +1,82 @@
+name: Docker
+
+on:
+  # workflow_dispatch:
+  # push:
+  #   # Publish `master` as Docker `latest` image.
+  #   branches:
+  #     - master
+
+env:
+  # TODO: Change variable to your image's name.
+  IMAGE_NAME: content-api
+  DOMAIN: api.freshair.radio
+
+jobs:
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        run: docker build . --file .config/docker/prod/Dockerfile --tag $IMAGE_NAME
+
+      - name: Log into registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        run: |
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+
+          # Change all uppercase to lowercase
+          export IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker tag $IMAGE_NAME $IMAGE_ID:${{ github.sha }}
+
+          docker push $IMAGE_ID:${{ github.sha }}
+          docker push $IMAGE_ID:$VERSION
+          export LATEST_IMAGE="$IMAGE_ID:${{ github.sha }}"
+
+      - name: Deploy App
+        run: |
+          set -x
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+
+          # Change all uppercase to lowercase
+          export IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          export LATEST_IMAGE="$IMAGE_ID:${{ github.sha }}"
+
+          mkdir -p ~/.ssh
+          echo "Host *
+            StrictHostKeyChecking no" > $HOME/.ssh/config
+          echo "${{ secrets.private_key }}" > $HOME/.ssh/id_rsa
+          chmod 400 $HOME/.ssh/id_rsa
+          echo "${{ secrets.deploy_host_keys }}" >> ~/.ssh/known_hosts
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker --log-level debug --host ${{ secrets.deploy_host }} login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+          docker --log-level debug --host ${{ secrets.deploy_host }} pull $LATEST_IMAGE
+
+          for container in $(docker --log-level debug --host ${{ secrets.deploy_host }} ps -f "label=radio.freshair.app=$IMAGE_NAME" --format "{{.ID}}")
+          do
+              docker --log-level debug --host ${{ secrets.deploy_host }} kill $container
+          done
+
+          docker --log-level debug --host ${{ secrets.deploy_host }} run -e PORT=5000 -e DATABASE_URL=${{ secrets.database_url }} -l radio.freshair.app=$IMAGE_NAME -p 5000 -d $LATEST_IMAGE > /tmp/new-id
+
+          ASSIGNED_PORT=`docker --log-level debug --host ${{ secrets.deploy_host }} inspect --format='{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}' $(cat /tmp/new-id)`
+
+          ssh -vvv penalosa@deployment_host.freshair.radio 'export ASSIGNED_PORT='"'$ASSIGNED_PORT'"';export DOMAIN='"'$DOMAIN'"';/home/penalosa/.nvm/versions/node/v14.7.0/bin/node scripts/sync-caddy.js $ASSIGNED_PORT $DOMAIN'
+          echo $ASSIGNED_PORT
