@@ -1,16 +1,16 @@
 name: Docker
 
 on:
-  # workflow_dispatch:
-  # push:
-  #   # Publish `master` as Docker `latest` image.
-  #   branches:
-  #     - master
+  workflow_dispatch:
+  push:
+    # Publish `master` as Docker `latest` image.
+    branches:
+      - master
 
 env:
   # TODO: Change variable to your image's name.
-  IMAGE_NAME: content-api
-  DOMAIN: api.freshair.radio
+  IMAGE_NAME: media-process
+  DOMAIN: media-worker.freshair.radio
 
 jobs:
   # Push image to GitHub Packages.
@@ -78,5 +78,5 @@ jobs:
 
           ASSIGNED_PORT=`docker --log-level debug --host ${{ secrets.deploy_host }} inspect --format='{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}' $(cat /tmp/new-id)`
 
-          ssh -vvv penalosa@deployment_host.freshair.radio 'export ASSIGNED_PORT='"'$ASSIGNED_PORT'"';export DOMAIN='"'$DOMAIN'"';/home/penalosa/.nvm/versions/node/v14.7.0/bin/node scripts/sync-caddy.js $ASSIGNED_PORT $DOMAIN'
+          ssh -v penalosa@deployment_host.freshair.radio 'export ASSIGNED_PORT='"'$ASSIGNED_PORT'"';export DOMAIN='"'$DOMAIN'"';/home/penalosa/.nvm/versions/node/v14.7.0/bin/node scripts/sync-caddy.js $ASSIGNED_PORT $DOMAIN'
           echo $ASSIGNED_PORT
