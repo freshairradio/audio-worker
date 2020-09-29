@@ -119,7 +119,7 @@ app.post(`/process`, (req, res) => {
     console.log(r);
     axios.put(
       req.body.update_url,
-      { ...r },
+      { ...r, published: true },
       {
         headers: {
           Authorization: req.headers.authorization,
