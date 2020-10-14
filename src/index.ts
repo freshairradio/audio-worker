@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import axios from "axios";
+import cors from "cors";
 import aws from "aws-sdk";
 import md5 from "md5";
 import { spawn, exec } from "child_process";
@@ -101,6 +102,7 @@ const processAudio = (url) => {
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 app.use(async (req, res, next) => {
   const user = await fetch(`https://identity.freshair.radio/user`, {
     headers: {
