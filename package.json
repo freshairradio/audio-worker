@@ -34,7 +34,7 @@
     "get-audio-duration": "^2.0.3",
     "md5": "^2.3.0",
     "moment": "^2.27.0",
-    "node-fetch": "2.6.0",
+    "node-fetch": "2.6.1",
     "pg": "^8.3.0",
     "uuid": "^8.3.0"
   }
