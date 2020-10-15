@@ -83,7 +83,7 @@ const processAudio = (url) => {
           .putObject({
             ...params,
             Body: dataStream,
-            Key: `processed_media/mp3/${hash}`
+            Key: `processed_media/mp3/${hash}.mp3`
           })
           .on("httpUploadProgress", (event) => {
             console.log(
@@ -93,7 +93,7 @@ const processAudio = (url) => {
           .promise();
         // await uploadToZetta(data, name)
         yes({
-          audio: `https://cdn.freshair.radio/processed_media/mp3/${hash}`,
+          audio: `https://cdn.freshair.radio/processed_media/mp3/${hash}.mp3`,
           length
         });
       });
