@@ -81,6 +81,17 @@ const processAudio = (url) => {
     const ffmpeg = spawn("ffmpeg", [
       "-i",
       `/tmp/${fileName}i`,
+      "-f",
+      "mp3",
+      "-vn",
+      "-ar",
+      "44100",
+      "-b:a",
+      "192k",
+      "-af",
+      "loudnorm=I=-18:LRA=13:TP=-2",
+      "-ac",
+      "2",
       `/tmp/${fileName}.mp3`
     ]);
     ffmpeg.stderr
