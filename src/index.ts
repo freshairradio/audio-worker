@@ -11,6 +11,43 @@ import { config } from "dotenv";
 config();
 const port = process.env.PORT;
 
+async function run(slug: string) {
+  let { picture } = await fetch(
+    `https://api.freshair.radio/public/shows/${slug}`
+  ).then((r) => r.json());
+  let rss = await fetch(`https://api.freshair.radio/rss/${slug}`).then((r) =>
+    r.text()
+  );
+  console.log(picture);
+
+  const { data, headers } = await axios.get(
+    `https://imgproxy.freshair.radio/signature/fill/2000/2000/sm/1/plain/${picture}@jpg`,
+    {
+      responseType: "arraybuffer"
+    }
+  );
+  let params = {
+    Bucket: "freshair",
+    ACL: "public-read",
+    ContentType: "application/rss+xml"
+  };
+  await s3
+    .putObject({
+      ...params,
+      ContentType: "image/jpeg",
+      Body: data,
+      Key: `rssfeed/${slug}.jpg`
+    })
+    .promise();
+  let req = await s3
+    .putObject({
+      ...params,
+      Body: rss,
+      Key: `rssfeed/${slug}.xml`
+    })
+    .promise();
+  console.log(req);
+}
 const s3 = new aws.S3({
   endpoint: "nyc3.digitaloceanspaces.com",
   accessKeyId: process.env.ACCESS_KEY_ID,
@@ -117,9 +154,9 @@ app.use(async (req, res, next) => {
   return next();
 });
 app.post(`/process`, (req, res) => {
-  processAudio(req.body.audio).then((r: object) => {
+  processAudio(req.body.audio).then(async (r: any) => {
     console.log(r);
-    axios.put(
+    await axios.put(
       req.body.update_url,
       { ...r, published: true },
       {
@@ -129,6 +166,8 @@ app.post(`/process`, (req, res) => {
         }
       }
     );
+    console.log("Generating RSS");
+    setTimeout(() => run(req.body.show), 500);
   });
   return res.status(200).send();
 });
