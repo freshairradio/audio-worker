@@ -141,7 +141,7 @@ const processAudio = (url) => {
           .promise();
         // await uploadToZetta(data, name)
         yes({
-          audio: `https://freshair.nyc3.digitaloceanspaces.com/processed_media/mp3/${hash}.mp3`,
+          audio: `https://cdn.freshair.radio/processed_media/mp3/${hash}.mp3`,
           length
         });
       });
